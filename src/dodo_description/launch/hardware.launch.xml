@@ -1,0 +1,31 @@
+<launch>
+  <let name="robot_description" value="$(command 'xacro $(find-pkg-share dodo_description)/urdf/model.urdf')" />
+  
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher">
+    <param name="robot_description" value="$(var robot_description)" type="str"/>
+    <param name="use_sim_time" value="false"/> </node>
+  
+  <node pkg="joint_state_publisher" exec="joint_state_publisher" name="jsp">
+    <param name="use_gui" value="false"/>
+    <param name="use_sim_time" value="false"/> </node>
+
+  <node pkg="dodo_description" exec="serial_node.py" name="hover_serial" output="screen">
+    <param name="port" value="/dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_14235333431351619082-if00"/>
+    <param name="baudrate" value="115200"/>
+    <param name="publish_tf" value="true"/> 
+    <param name="invert_right_odom" value="true"/> 
+    <param name="wheel_radius" value="0.084"/>
+    <param name="track_width" value="0.38"/>
+    <param name="ticks_per_meter" value="1500.0"/>
+    <param name="use_sim_time" value="false"/> </node>
+
+  <node pkg="rplidar_ros" exec="rplidar_composition" name="rplidar" output="screen">
+    <param name="serial_port" value="/dev/rplidar"/>
+    <param name="serial_baudrate" value="115200"/>
+    <param name="frame_id" value="lidar"/>
+    <param name="angle_compensate" value="true"/>
+    <param name="inverted" value="false"/>
+    <param name="scan_mode" value="Boost"/>
+    <param name="use_sim_time" value="false"/> <remap from="scan" to="/scan"/>
+  </node>
+</launch>

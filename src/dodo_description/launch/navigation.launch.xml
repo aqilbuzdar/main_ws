@@ -1,0 +1,53 @@
+<launch>
+  <arg name="nav_params" default="$(find-pkg-share dodo_description)/config/nav2_params.yaml"/>
+  <arg name="map_file" default="/home/aqil/main_ws/my_new_map.yaml"/>
+  <arg name="use_sim_time" default="false"/>
+
+  <let name="robot_description" value="$(command 'xacro $(find-pkg-share dodo_description)/urdf/model.urdf')" />
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher">
+    <param name="robot_description" value="$(var robot_description)" type="str"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+  
+  <node pkg="dodo_description" exec="serial_node.py" name="hover_serial" output="screen">
+    <param name="port" value="/dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_14235333431351619082-if00"/>
+    <param name="baudrate" value="115200"/>
+    <param name="publish_tf" value="false"/> 
+    <param name="wheel_radius" value="0.084"/>
+    <param name="track_width" value="0.38"/>
+    <param name="ticks_per_meter" value="852.0"/>
+    <remap from="/odom" to="/raw_odom"/>
+  </node>
+
+  <node pkg="rplidar_ros" exec="rplidar_composition" name="rplidar" output="screen">
+    <param name="serial_port" value="/dev/rplidar"/>
+    <param name="serial_baudrate" value="115200"/>
+    <param name="frame_id" value="lidar"/>
+    <param name="angle_compensate" value="true"/>
+    <param name="scan_mode" value="Sensitivity"/> 
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <remap from="scan" to="/scan"/>
+  </node>
+
+  <node pkg="dodo_description" exec="oak_imu.py" name="oak_imu" output="screen">
+    <param name="frame_id" value="oak_imu_link"/>
+    <param name="rate_hz" value="100"/>
+    <param name="corr_pitch" value="-1.5708"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+  </node>
+
+  <node pkg="robot_localization" exec="ekf_node" name="ekf_filter_node" output="screen">
+    <param from="$(find-pkg-share dodo_description)/config/ekf.yaml"/>
+    <param name="use_sim_time" value="$(var use_sim_time)"/>
+    <remap from="odometry/filtered" to="/odom"/>
+  </node>
+
+  <include file="$(find-pkg-share nav2_bringup)/launch/bringup_launch.py">
+    <arg name="map" value="$(var map_file)"/>
+    <arg name="use_sim_time" value="$(var use_sim_time)"/>
+    <arg name="params_file" value="$(var nav_params)"/>
+  </include>
+
+  <node pkg="rviz2" exec="rviz2" name="rviz" />
+
+</launch>

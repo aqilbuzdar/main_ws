@@ -1,0 +1,67 @@
+<launch>
+  <!-- 1. Robot Description (URDF) -->
+  <let name="robot_description"
+       value="$(command 'xacro $(find-pkg-share dodo_description)/urdf/model.urdf')" />
+
+  <!-- 2. Robot State Publisher -->
+  <node pkg="robot_state_publisher" exec="robot_state_publisher" name="robot_state_publisher">
+    <param name="robot_description" value="$(var robot_description)" type="str"/>
+    <param name="use_sim_time" value="false"/>
+  </node>
+
+  <!-- 3. Joint State Publisher -->
+  <node pkg="joint_state_publisher" exec="joint_state_publisher" name="jsp">
+    <param name="use_gui" value="false"/>
+  </node>
+
+  <node pkg="dodo_description" exec="serial_node.py" name="hover_serial" output="screen">
+    <!-- Port Settings -->
+    <param name="port" value="/dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_14235333431351619082-if00"/>
+    <param name="baudrate" value="115200"/>
+
+    <!-- TF ko False rakho taake EKF handle kare -->
+    <param name="publish_tf" value="false"/>
+
+    <!-- Calibration -->
+    <param name="wheel_radius" value="0.084"/>
+    <param name="track_width" value="0.38"/>
+    <param name="ticks_per_meter" value="850.0"/>
+
+    <!-- Odometry output ko /raw_odom pe bhejo -->
+    <remap from="/odom" to="/raw_odom"/>
+  </node>
+
+  <!-- 5. EKF NODE (Sensor Fusion - The Brain) -->
+  <node pkg="robot_localization" exec="ekf_node" name="ekf_filter_node" output="screen">
+    <param from="$(find-pkg-share dodo_description)/config/ekf.yaml"/>
+    <!-- EKF ka saaf output wapas '/odom' par bhejo taake SLAM khush rahe -->
+    <remap from="odometry/filtered" to="/odom"/>
+  </node>
+
+  <!-- 6. RPLIDAR -->
+  <node pkg="rplidar_ros" exec="rplidar_composition" name="rplidar" output="screen">
+    <param name="serial_port" value="/dev/rplidar"/>
+    <param name="serial_baudrate" value="115200"/>
+    <param name="frame_id" value="lidar"/>
+    <param name="angle_compensate" value="true"/>
+    <param name="inverted" value="false"/>
+    <remap from="scan" to="/scan"/>
+  </node>
+
+  <!-- 7. OAK-D IMU -->
+  <node pkg="dodo_description" exec="oak_imu.py" name="oak_imu" output="screen">
+    <param name="frame_id" value="oak_imu_link"/>
+    <param name="rate_hz" value="100"/>
+    <param name="corr_roll"  value="0.0"/>
+    <param name="corr_pitch" value="-1.5708"/>
+    <param name="corr_yaw"   value="0.0"/>
+  </node>
+
+  <!-- 8. SLAM Toolbox -->
+  <include file="$(find-pkg-share slam_toolbox)/launch/online_async_launch.py">
+    <arg name="slam_params_file" value="$(find-pkg-share dodo_description)/config/slam.yaml"/>
+  </include>
+
+  <!-- 9. RViz -->
+  <node pkg="rviz2" exec="rviz2" name="rviz"/>
+</launch>

@@ -1,0 +1,17 @@
+camera:
+  i_enable_imu: true
+  imu:
+    imu_rate: 100
+
+  # TURN OFF *all* TF publishing from depthai_ros_driver
+  publish_tf: false                  # <- stop publishing TF entirely
+  i_publish_tf_from_calibration: false
+  i_tf_imu_from_descr: false
+
+  # Everything else OFF to stay lightweight
+  rgb:
+    i_enable_rgb: false
+  stereo:
+    i_enable_stereo: false
+  nn:
+    i_enable_nn: false
